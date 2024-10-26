@@ -9,7 +9,7 @@ const PORT = 3000;
 // Set a throttle rate of 100 KB/s (100 * 1024 bytes per second)
 const downloadSpeedLimit = 100 * 1024; // 100 KB/s
 
-app.get("/download", (req, res) => {
+app.get("/downloadThrottle", (req, res) => {
   const filePath = path.join(__dirname, "files", "example.pdf"); // Path to the file
 
   // Check if the file exists
@@ -17,15 +17,38 @@ app.get("/download", (req, res) => {
     const fileStream = fs.createReadStream(filePath); // Create a read stream for the file
     const throttle = new Throttle({ rate: downloadSpeedLimit }); // Throttle the stream to 100 KB/s
 
+    // Get the file size and set it in the header
+    const fileSize = fs.statSync(filePath).size;
+    res.setHeader("Content-Length", fileSize);
+
     // Set headers to force download
-    res.setHeader(
-      "Content-Disposition",
-      'attachment; filename="downloadedFile.pdf"'
-    );
+    res.setHeader("Content-Disposition", 'attachment; filename="example.pdf"');
     res.setHeader("Content-Type", "application/pdf");
 
     // Pipe the file through the throttle and then to the response
     fileStream.pipe(throttle).pipe(res);
+  } else {
+    res.status(404).send("File not found");
+  }
+});
+
+app.get("/download", (req, res) => {
+  const filePath = path.join(__dirname, "files", "example.pdf"); // Path to the file
+
+  // Check if the file exists
+  if (fs.existsSync(filePath)) {
+    const fileStream = fs.createReadStream(filePath); // Create a read stream for the file
+
+    // Get the file size and set it in the header
+    const fileSize = fs.statSync(filePath).size;
+    res.setHeader("Content-Length", fileSize);
+
+    // Set headers to force download
+    res.setHeader("Content-Disposition", 'attachment; filename="example.pdf"');
+    res.setHeader("Content-Type", "application/pdf");
+
+    // Pipe the file through the throttle and then to the response
+    fileStream.pipe(res);
   } else {
     res.status(404).send("File not found");
   }
